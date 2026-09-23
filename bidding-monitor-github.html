@@ -144,19 +144,6 @@ tr.lowest{background:var(--gold-soft);}
 <datalist id="dl-bidders"></datalist>
 
 <script>
-// PASTE YOUR FIREBASE CONFIG HERE (see README) ↓
-const firebaseConfig = {
-  apiKey: "AIzaSyBfL_LTNUoO28ls9KEsKreMdXHwfHFqndo",
-  authDomain: "bid-monitoring-f1308.firebaseapp.com",
-  projectId: "bid-monitoring-f1308",
-  storageBucket: "bid-monitoring-f1308.firebasestorage.app",
-  messagingSenderId: "130105353479",
-  appId: "1:130105353479:web:c527625f42ff6e82a8d1a2",
-  measurementId: "G-VT4BDEPMNF"
-};
-firebase.initializeApp(firebaseConfig);
-const fireDb = firebase.firestore();
-
 const STATUS_OPTS = ["Pending","For Evaluation","Passed","Failed"];
 const FIN_FIELDS = [
   {key:"contractId", label:"Contract ID", type:"text"},
@@ -185,6 +172,7 @@ const SORTS = {
 let state = {financial:[], technical:[]};
 let tab = "financial";
 let editingId = null;
+let dbApi = null;
 let search = "";
 let sortKey = "contractId";
 let sortDir = "asc";
@@ -209,31 +197,20 @@ function loadLocal(){
 function saveLocal(){ try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(state)); }catch(e){} }
 
 async function initStorage(){
-  loadLocal(); // one-time: pick up anything already in this browser, then migrate to shared storage
-  document.getElementById("statusLine").textContent = "Connecting...";
-  try{
-    const fSnap = await fireDb.collection("financial").get();
-    const tSnap = await fireDb.collection("technical").get();
-    if(fSnap.empty && tSnap.empty && (state.financial.length || state.technical.length)){
-      for(const r of state.financial){ const {id,...d} = r; await fireDb.collection("financial").doc(id).set(d); }
-      for(const r of state.technical){ const {id,...d} = r; await fireDb.collection("technical").doc(id).set(d); }
-    }
-  }catch(e){ console.error(e); }
-  document.getElementById("statusLine").textContent = "Live — shared with everyone who opens this page";
-  fireDb.collection("financial").onSnapshot(snap=>{ state.financial = snap.docs.map(d=>({id:d.id, ...d.data()})); renderAll(); }, e=>console.error(e));
-  fireDb.collection("technical").onSnapshot(snap=>{ state.technical = snap.docs.map(d=>({id:d.id, ...d.data()})); renderAll(); }, e=>console.error(e));
+  loadLocal();
+  document.getElementById("statusLine").textContent = "Saved in this browser only";
+  renderAll();
 }
 
 async function saveRow(coll, data, id){
-  try{
-    if(id){ await fireDb.collection(coll).doc(id).set(data); }
-    else { await fireDb.collection(coll).add(data); }
-  }catch(e){ showBanner("Couldn't save — check your connection."); return; }
+  if(id){ const idx = state[coll].findIndex(r=>r.id===id); state[coll][idx] = {id, ...data}; }
+  else { state[coll].push({id:genId(), ...data}); }
+  saveLocal(); renderAll();
   checkCrossRef(coll, data.contractId);
 }
 async function deleteRow(coll, id){
-  try{ await fireDb.collection(coll).doc(id).delete(); }
-  catch(e){ showBanner("Couldn't delete — check your connection."); }
+  state[coll] = state[coll].filter(r=>r.id!==id);
+  saveLocal(); renderAll();
 }
 function checkCrossRef(coll, contractId){
   if(!contractId) return;
