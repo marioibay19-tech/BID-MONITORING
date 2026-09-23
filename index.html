@@ -454,7 +454,7 @@ window.viewContract = function(cid){
     html += `<div class="cv-row"><span>Post Qualification Date</span><b>${esc(tech.postQualDate)||"—"}</b></div>`;
     html += `<div class="cv-row"><span>Location of Equipment</span><b>${esc(tech.locationEquipment)||"—"}</b></div>`;
     html += `<div class="cv-row"><span>Bid Winner</span><b>${esc(tech.bidWinner)||"—"}</b></div>`;
-    html += `<div class="cv-section"><h3>Corrections</h3><div>${esc(tech.corrections)||"—"}</div></div>`;
+    html += `<div class="cv-section"><h3>Corrections</h3><div style="white-space:pre-wrap;">${esc(tech.corrections)||"—"}</div></div>`;
   } else html += `<div class="cv-row"><span>No technical entry yet</span></div>`;
   html += `</div>`;
   document.getElementById("printArea").innerHTML = html;
