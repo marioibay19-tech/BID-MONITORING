@@ -353,7 +353,7 @@ function renderTable(){
   order.forEach(cid=>{
     const grp = groups[cid];
     const isOpen = expandedGroups.has(cid);
-    html += `<tr class="group-row" onclick="toggleGroup('${esc(cid)}')"><td colspan="7"><div class="group-flex"><span class="chevron">${isOpen?"▾":"▸"}</span><span class="entry-no">No. ${order.indexOf(cid)+1}</span><span class="group-name">${esc(grp[0].contractName||"Untitled contract")}</span><span class="group-cid">Contract ${esc(cid)}</span><span class="group-count">${grp.length} bid${grp.length===1?"":"s"}</span><button class="viewlink" onclick="event.stopPropagation();viewContract('${esc(cid)}')">View</button></div></td></tr>`;
+    html += `<tr class="group-row" onclick="toggleGroup('${esc(cid)}')"><td colspan="7"><div class="group-flex"><span class="chevron">${isOpen?"▾":"▸"}</span><span class="entry-no">No. ${order.indexOf(cid)+1}</span><span class="group-cid">Contract ${esc(cid)}</span><span class="group-name">${esc(grp[0].contractName||"Untitled contract")}</span><span class="group-count">${grp.length} bid${grp.length===1?"":"s"}</span><button class="viewlink" onclick="event.stopPropagation();viewContract('${esc(cid)}')">View</button></div></td></tr>`;
     if(isOpen){
       grp.forEach(r=>{
         html += `<tr><td>${esc(r.pointPerson)}</td><td>${esc(r.bidOpeningDate)}</td><td>${badge(r.financialStatus)}</td><td>${esc(r.bidder)}</td><td>${r.abcPrice?"₱"+num(r.abcPrice).toLocaleString():""}</td><td>${r.biddersPrice?"₱"+num(r.biddersPrice).toLocaleString():""}</td><td class="actions"><button onclick="event.stopPropagation();openEdit('${r.id}')">Edit</button><button class="del" onclick="event.stopPropagation();askDelete('${r.id}')">Delete</button></td></tr>`;
