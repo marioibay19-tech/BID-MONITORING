@@ -46,15 +46,18 @@ button.add:hover{background:var(--blue);border-color:var(--blue);}
 .empty{padding:36px 20px;text-align:center;color:var(--sub);font-size:13px;}
 .contract-card{border-bottom:1px solid var(--line);}
 .contract-card:last-child{border-bottom:none;}
-.contract-header{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;background:var(--head);flex-wrap:wrap;}
+.contract-header{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;cursor:pointer;background:var(--head);flex-wrap:wrap;}
 .contract-header:hover{background:var(--gold-soft);}
 .chevron{color:var(--gold);font-size:11px;width:10px;flex-shrink:0;}
 .entry-no{font-family:var(--sans);font-weight:700;color:var(--gold);font-size:12px;flex-shrink:0;}
-.group-cid{color:var(--blue);font-size:12px;font-weight:700;background:var(--card);border:1px solid var(--blue);padding:2px 8px;border-radius:4px;letter-spacing:.02em;}
-.group-name{font-family:var(--sans);font-weight:700;font-size:14px;}
-.group-pp{color:var(--sub);font-size:12px;}
+.ch-idcol{display:flex;flex-direction:column;gap:4px;flex-shrink:0;align-items:flex-start;}
+.ch-main{display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px;}
+.ch-meta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.group-cid{color:var(--blue);font-size:12px;font-weight:700;background:var(--card);border:1px solid var(--blue);padding:2px 8px;border-radius:4px;letter-spacing:.02em;white-space:nowrap;}
+.group-name{font-family:var(--sans);font-weight:700;font-size:14px;white-space:normal;overflow-wrap:break-word;}
+.group-pp{color:var(--ink);font-size:12px;font-weight:700;background:var(--card);border:1px solid var(--line);padding:2px 8px;border-radius:4px;}
 .group-count{color:var(--sub);font-size:12px;}
-.winner-tag{background:var(--gold-soft);color:var(--gold);font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;}
+.winner-tag{background:var(--gold-soft);color:var(--gold);font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;}
 .viewlink{border:1px solid var(--line);background:var(--card);color:var(--blue);font-size:11px;padding:3px 9px;border-radius:4px;cursor:pointer;font-family:var(--sans);font-weight:600;margin-left:auto;}
 .viewlink:hover{border-color:var(--blue);}
 .contract-body{padding:14px 16px 20px;background:var(--card);}
@@ -311,15 +314,14 @@ function renderContracts(){
   let html = "";
   contracts.forEach((c,idx)=>{
     const open = expandedGroups.has(c.cid);
+    const winnerTag = (c.tech && c.tech.bidWinner) ? `<span class="winner-tag">Winner: ${esc(c.tech.bidWinner)}</span>` : "";
     html += `<div class="contract-card">`;
     html += `<div class="contract-header" onclick="toggleGroup('${esc(c.cid)}')">`;
     html += `<span class="chevron">${open?"▾":"▸"}</span>`;
     html += `<span class="entry-no">No. ${idx+1}</span>`;
-    html += `<span class="group-cid">Contract ${esc(c.cid)}</span>`;
-    html += `<span class="group-name">${esc(c.contractName||"Untitled contract")}</span>`;
-    html += `<span class="group-pp">${esc(c.pointPerson)}</span>`;
-    html += `<span class="group-count">${c.bids.length} bid${c.bids.length===1?"":"s"}</span>`;
-    if(c.tech && c.tech.bidWinner) html += `<span class="winner-tag">Winner: ${esc(c.tech.bidWinner)}</span>`;
+    html += `<div class="ch-idcol"><span class="group-cid">Contract ${esc(c.cid)}</span>${winnerTag}</div>`;
+    html += `<div class="ch-main"><span class="group-name">${esc(c.contractName||"Untitled contract")}</span>`;
+    html += `<div class="ch-meta-row"><span class="group-pp">${esc(c.pointPerson)||"No point person"}</span><span class="group-count">${c.bids.length} bid${c.bids.length===1?"":"s"}</span></div></div>`;
     html += `<button class="viewlink" onclick="event.stopPropagation();viewContract('${esc(c.cid)}')">View</button>`;
     html += `</div>`;
     if(open){
