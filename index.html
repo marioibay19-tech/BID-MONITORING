@@ -58,7 +58,10 @@ tr.group-row:hover td{background:var(--gold-soft);}
 .entry-no{font-family:var(--sans);font-weight:700;color:var(--gold);font-size:12px;flex-shrink:0;}
 .group-name{font-family:var(--sans);font-weight:700;font-size:14px;}
 .group-cid{color:var(--sub);font-size:12px;}
-.group-count{color:var(--sub);font-size:12px;margin-left:auto;}
+.group-count{color:var(--sub);font-size:12px;}
+.chevron{color:var(--gold);font-size:11px;width:10px;flex-shrink:0;}
+.viewlink{border:1px solid var(--line);background:var(--card);color:var(--blue);font-size:11px;padding:3px 9px;border-radius:4px;cursor:pointer;font-family:var(--sans);font-weight:600;margin-left:auto;}
+.viewlink:hover{border-color:var(--blue);}
 tr.lowest{background:var(--gold-soft);}
 .badge{display:inline-block;padding:2px 9px;border-radius:3px;font-size:11px;font-weight:500;border:1px solid transparent;}
 .badge.Pending{background:#F1E4CB;color:#7A5A1E;border-color:#D9BF87;}
@@ -186,6 +189,7 @@ let editingId = null;
 let search = "";
 let sortKey = "contractId";
 let sortDir = "asc";
+let expandedGroups = new Set();
 const LOCAL_KEY = "bidding-monitor-data";
 
 function esc(s){ return (s??"").toString().replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -348,16 +352,20 @@ function renderTable(){
   let html = "<table><thead><tr><th class='nosort'>Point Person</th><th class='nosort'>Bid Opening</th><th class='nosort'>Status</th><th class='nosort'>Bidder</th><th class='nosort'>ABC Price</th><th class='nosort'>Bidder's Price</th><th class='nosort'></th></tr></thead><tbody>";
   order.forEach(cid=>{
     const grp = groups[cid];
-    const prices = grp.map(r=>num(r.biddersPrice)).filter(p=>p>0);
-    const minPrice = prices.length ? Math.min(...prices) : null;
-    html += `<tr class="group-row" onclick="viewContract('${esc(cid)}')"><td colspan="7"><div class="group-flex"><span class="entry-no">No. ${order.indexOf(cid)+1}</span><span class="group-name">${esc(grp[0].contractName||"Untitled contract")}</span><span class="group-cid">Contract ${esc(cid)}</span><span class="group-count">${grp.length} bid${grp.length===1?"":"s"}</span></div></td></tr>`;
-    grp.forEach(r=>{
-      const isLowest = minPrice!==null && num(r.biddersPrice)===minPrice && num(r.biddersPrice)>0;
-      html += `<tr class="${isLowest?"lowest":""}"><td>${esc(r.pointPerson)}</td><td>${esc(r.bidOpeningDate)}</td><td>${badge(r.financialStatus)}</td><td>${esc(r.bidder)}${isLowest?'<span class="lowbadge">Lowest bid</span>':""}</td><td>${r.abcPrice?"₱"+num(r.abcPrice).toLocaleString():""}</td><td>${r.biddersPrice?"₱"+num(r.biddersPrice).toLocaleString():""}</td><td class="actions"><button onclick="event.stopPropagation();openEdit('${r.id}')">Edit</button><button class="del" onclick="event.stopPropagation();askDelete('${r.id}')">Delete</button></td></tr>`;
-    });
+    const isOpen = expandedGroups.has(cid);
+    html += `<tr class="group-row" onclick="toggleGroup('${esc(cid)}')"><td colspan="7"><div class="group-flex"><span class="chevron">${isOpen?"▾":"▸"}</span><span class="entry-no">No. ${order.indexOf(cid)+1}</span><span class="group-name">${esc(grp[0].contractName||"Untitled contract")}</span><span class="group-cid">Contract ${esc(cid)}</span><span class="group-count">${grp.length} bid${grp.length===1?"":"s"}</span><button class="viewlink" onclick="event.stopPropagation();viewContract('${esc(cid)}')">View</button></div></td></tr>`;
+    if(isOpen){
+      grp.forEach(r=>{
+        html += `<tr><td>${esc(r.pointPerson)}</td><td>${esc(r.bidOpeningDate)}</td><td>${badge(r.financialStatus)}</td><td>${esc(r.bidder)}</td><td>${r.abcPrice?"₱"+num(r.abcPrice).toLocaleString():""}</td><td>${r.biddersPrice?"₱"+num(r.biddersPrice).toLocaleString():""}</td><td class="actions"><button onclick="event.stopPropagation();openEdit('${r.id}')">Edit</button><button class="del" onclick="event.stopPropagation();askDelete('${r.id}')">Delete</button></td></tr>`;
+      });
+    }
   });
   html += "</tbody></table>";
   host.innerHTML = html;
+}
+window.toggleGroup = function(cid){
+  if(expandedGroups.has(cid)) expandedGroups.delete(cid); else expandedGroups.add(cid);
+  renderTable();
 }
 
 window.askDelete = function(id){ if(confirm("Delete this entry?")) deleteRow(tab, id); };
