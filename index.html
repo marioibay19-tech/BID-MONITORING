@@ -179,7 +179,7 @@ const TECH_FIELDS = [
   {key:"locationEquipment", label:"Location of Equipment", type:"text"},
   {key:"bidWinner", label:"Bid Winner", type:"combo", list:"dl-bidders"},
 ];
-const SORTS = [["contractId","Contract ID"],["contractName","Contract Name"],["pointPerson","Point Person"]];
+const SORTS = [["contractId","Contract ID"],["contractName","Contract Name"],["pointPerson","Point Person"],["bidder","Bidder"]];
 
 let state = {financial:[], technical:[]};
 let editingId = null;
@@ -255,7 +255,8 @@ function getContracts(){
     const tech = state.technical.find(r=>r.contractId===cid) || null;
     const contractName = (bids[0]&&bids[0].contractName) || (tech&&tech.contractName) || "";
     const pointPerson = (bids[0]&&bids[0].pointPerson) || (tech&&tech.pointPerson) || "";
-    return {cid, bids, tech, contractName, pointPerson};
+    const bidder = (bids[0] && bids[0].bidder) || "";
+    return {cid, bids, tech, contractName, pointPerson, bidder};
   });
   if(search){
     const q = search.toLowerCase();
