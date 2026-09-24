@@ -62,10 +62,11 @@ button.add:hover{background:var(--blue);border-color:var(--blue);}
 .viewlink:hover{border-color:var(--blue);}
 .contract-body{padding:14px 16px 20px;background:var(--card);}
 .detail-wrap{display:flex;gap:28px;flex-wrap:wrap;}
-.detail-col{flex:1;min-width:280px;}
+.detail-col{flex:1;min-width:280px;max-width:100%;overflow-x:auto;}
 .detail-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:700;font-size:13px;color:var(--blue);}
 .mini-table{width:100%;border-collapse:collapse;}
-.mini-table th,.mini-table td{padding:6px 8px;font-size:12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.mini-table{table-layout:fixed;}
+.mini-table th,.mini-table td{padding:6px 8px;font-size:12px;border-bottom:1px solid var(--line);text-align:left;white-space:normal;overflow-wrap:break-word;font-variant-numeric:tabular-nums;}
 .mini-table th{color:var(--sub);font-weight:600;}
 .empty-mini{color:var(--sub);font-size:12px;padding:8px 0;}
 .techrow{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px;}
