@@ -44,6 +44,9 @@ button.add:hover{background:var(--blue);border-color:var(--blue);}
 .banner.show{display:block;}
 .scroll{overflow-x:auto;}
 .empty{padding:36px 20px;text-align:center;color:var(--sub);font-size:13px;}
+.pagination{display:flex;align-items:center;justify-content:center;gap:14px;padding:14px 16px;}
+.pagination .btn:disabled{opacity:.4;cursor:not-allowed;}
+.page-info{color:var(--sub);font-size:12px;}
 .contract-card{border-bottom:1px solid var(--line);}
 .contract-card:last-child{border-bottom:none;}
 .contract-header{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;cursor:pointer;background:var(--head);flex-wrap:wrap;}
@@ -199,6 +202,8 @@ let search = "";
 let sortKey = "contractId";
 let sortDir = "asc";
 let expandedGroups = new Set();
+let currentPage = 1;
+const PAGE_SIZE = 20;
 const LOCAL_KEY = "bidding-monitor-data";
 
 function esc(s){ return (s??"").toString().replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -352,8 +357,14 @@ function renderContracts(){
     host.innerHTML = `<div class="empty">No contracts yet. Tap "+ Add Bid" to start.</div>`;
     return;
   }
+  const totalPages = Math.max(1, Math.ceil(contracts.length / PAGE_SIZE));
+  if(currentPage > totalPages) currentPage = totalPages;
+  if(currentPage < 1) currentPage = 1;
+  const startIdx = (currentPage-1) * PAGE_SIZE;
+  const pageItems = contracts.slice(startIdx, startIdx + PAGE_SIZE);
   let html = "";
-  contracts.forEach((c,idx)=>{
+  pageItems.forEach((c,i)=>{
+    const idx = startIdx + i;
     const open = expandedGroups.has(c.cid);
     const winnerTag = (c.tech && c.tech.bidWinner) ? `<span class="winner-tag">Winner: ${esc(c.tech.bidWinner)}</span>` : "";
     html += `<div class="contract-card">`;
@@ -391,8 +402,16 @@ function renderContracts(){
     }
     html += `</div>`;
   });
+  if(totalPages > 1){
+    html += `<div class="pagination">`;
+    html += `<button class="btn" ${currentPage<=1?"disabled":""} onclick="goToPage(${currentPage-1})">Prev</button>`;
+    html += `<span class="page-info">Page ${currentPage} of ${totalPages} — ${contracts.length} contracts</span>`;
+    html += `<button class="btn" ${currentPage>=totalPages?"disabled":""} onclick="goToPage(${currentPage+1})">Next</button>`;
+    html += `</div>`;
+  }
   host.innerHTML = html;
 }
+window.goToPage = function(p){ currentPage = p; renderContracts(); }
 window.toggleGroup = function(cid){
   if(expandedGroups.has(cid)) expandedGroups.delete(cid); else expandedGroups.add(cid);
   renderContracts();
@@ -561,9 +580,9 @@ document.getElementById("overlay").addEventListener("click", e=>{ if(e.target.id
 document.getElementById("cvCloseBtn").addEventListener("click", ()=>document.getElementById("cvOverlay").classList.remove("open"));
 document.getElementById("cvOverlay").addEventListener("click", e=>{ if(e.target.id==="cvOverlay") e.currentTarget.classList.remove("open"); });
 document.getElementById("cvPrintBtn").addEventListener("click", ()=>window.print());
-document.getElementById("search").addEventListener("input", e=>{ search = e.target.value; renderContracts(); });
-document.getElementById("sortSel").addEventListener("change", e=>{ sortKey = e.target.value; renderContracts(); });
-document.getElementById("dirBtn").addEventListener("click", ()=>{ sortDir = sortDir==="asc"?"desc":"asc"; syncSortControls(); renderContracts(); });
+document.getElementById("search").addEventListener("input", e=>{ search = e.target.value; currentPage = 1; renderContracts(); });
+document.getElementById("sortSel").addEventListener("change", e=>{ sortKey = e.target.value; currentPage = 1; renderContracts(); });
+document.getElementById("dirBtn").addEventListener("click", ()=>{ sortDir = sortDir==="asc"?"desc":"asc"; syncSortControls(); currentPage = 1; renderContracts(); });
 document.getElementById("exportBtn").addEventListener("click", exportCsv);
 
 syncSortControls();
