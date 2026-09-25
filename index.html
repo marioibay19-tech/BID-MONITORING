@@ -88,6 +88,7 @@ button.add:hover{background:var(--blue);border-color:var(--blue);}
 .field{margin-bottom:12px;}
 .field label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px;}
 .field input,.field select,.field textarea{width:100%;padding:9px 10px;border-radius:5px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:14px;font-family:var(--sans);}
+.field input[readonly]{background:var(--head);color:var(--sub);cursor:not-allowed;}
 .field textarea{min-height:90px;resize:none;overflow:hidden;}
 .modal h2{font-family:var(--sans);font-weight:700;font-size:18px;margin:0 0 14px;color:var(--blue);}
 .modalbtns{display:flex;gap:10px;margin-top:6px;}
@@ -431,7 +432,9 @@ function buildForm(fieldsArr, data){
   if(formMode==="bid"){
     const idInput = host.querySelector('[data-key="contractId"]');
     if(idInput){
-      idInput.addEventListener("change", ()=>{
+      idInput.addEventListener("change", syncContractDefaults);
+      syncContractDefaults();
+      function syncContractDefaults(){
         const cid = idInput.value.trim();
         const match = [...state.financial, ...state.technical].find(r=>r.contractId===cid && r.id!==editingId);
         if(match){
@@ -440,7 +443,19 @@ function buildForm(fieldsArr, data){
           if(nameField && !nameField.value) nameField.value = match.contractName || "";
           if(ppField && !ppField.value) ppField.value = match.pointPerson || "";
         }
-      });
+        const abcField = host.querySelector('[data-key="abcPrice"]');
+        const abcMatch = state.financial.find(r=>r.contractId===cid && r.id!==editingId && r.abcPrice);
+        if(abcField){
+          if(abcMatch){
+            abcField.value = abcMatch.abcPrice;
+            abcField.readOnly = true;
+            abcField.title = "ABC Price is set once per contract";
+          } else {
+            abcField.readOnly = false;
+            abcField.title = "";
+          }
+        }
+      }
     }
   }
   host.querySelectorAll("textarea").forEach(ta=>{
