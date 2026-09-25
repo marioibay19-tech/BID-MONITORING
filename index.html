@@ -147,6 +147,7 @@ button.add:hover{background:var(--blue);border-color:var(--blue);}
 
 <datalist id="dl-people"></datalist>
 <datalist id="dl-bidders"></datalist>
+<datalist id="dl-personnel"></datalist>
 
 <script>
 // PASTE YOUR FIREBASE CONFIG HERE (see README) ↓
@@ -175,6 +176,14 @@ const FIN_FIELDS = [
 ];
 const TECH_FIELDS = [
   {key:"postQualDate", label:"Post Qualification Date", type:"date"},
+  {key:"projectManager", label:"Project Manager", type:"combo", list:"dl-personnel"},
+  {key:"projectManagerExp", label:"Project Manager – Work Experience", type:"text"},
+  {key:"projectEngineer", label:"Project Engineer", type:"combo", list:"dl-personnel"},
+  {key:"projectEngineerExp", label:"Project Engineer – Work Experience", type:"text"},
+  {key:"materialsEngineer", label:"Materials Engineer", type:"combo", list:"dl-personnel"},
+  {key:"materialsEngineerExp", label:"Materials Engineer – Work Experience", type:"text"},
+  {key:"foreman", label:"Foreman", type:"combo", list:"dl-personnel"},
+  {key:"foremanExp", label:"Foreman – Work Experience", type:"text"},
   {key:"corrections", label:"Corrections of the Technical", type:"textarea"},
   {key:"locationEquipment", label:"Location of Equipment", type:"text"},
   {key:"bidWinner", label:"Bid Winner", type:"combo", list:"dl-bidders"},
@@ -235,14 +244,19 @@ async function deleteRow(coll, id){
 
 /* ---------- datalists ---------- */
 function refreshDatalists(){
-  const people = new Set(), bidders = new Set();
+  const people = new Set(), bidders = new Set(), personnel = new Set();
   [...state.financial, ...state.technical].forEach(r=>{
     if(r.pointPerson) people.add(r.pointPerson);
     if(r.bidder) bidders.add(r.bidder);
     if(r.bidWinner) bidders.add(r.bidWinner);
+    if(r.projectManager) personnel.add(r.projectManager);
+    if(r.projectEngineer) personnel.add(r.projectEngineer);
+    if(r.materialsEngineer) personnel.add(r.materialsEngineer);
+    if(r.foreman) personnel.add(r.foreman);
   });
   document.getElementById("dl-people").innerHTML = [...people].map(p=>`<option value="${esc(p)}">`).join("");
   document.getElementById("dl-bidders").innerHTML = [...bidders].map(b=>`<option value="${esc(b)}">`).join("");
+  document.getElementById("dl-personnel").innerHTML = [...personnel].map(p=>`<option value="${esc(p)}">`).join("");
 }
 
 /* ---------- combined contract list ---------- */
@@ -306,6 +320,10 @@ function badge(status){
   return `<span class="badge ${cls}">${esc(status||"—")}</span>`;
 }
 
+function personRow(label, name, exp){
+  const val = name ? `${esc(name)}${exp?` <span style="color:var(--sub);font-weight:400;">(${esc(exp)})</span>`:""}` : "—";
+  return `<div class="techrow"><span>${label}</span><b>${val}</b></div>`;
+}
 function renderContracts(){
   const host = document.getElementById("tableHost");
   const contracts = getContracts();
@@ -340,6 +358,10 @@ function renderContracts(){
       html += `<div class="detail-col"><div class="detail-head"><span>Technical</span><button class="viewlink" onclick="openTechnical('${esc(c.cid)}')">${c.tech?"Edit":"Add"} Technical</button></div>`;
       if(c.tech){
         html += `<div class="techrow"><span>Post Qualification Date</span><b>${esc(c.tech.postQualDate)||"—"}</b></div>`;
+        html += personRow("Project Manager", c.tech.projectManager, c.tech.projectManagerExp);
+        html += personRow("Project Engineer", c.tech.projectEngineer, c.tech.projectEngineerExp);
+        html += personRow("Materials Engineer", c.tech.materialsEngineer, c.tech.materialsEngineerExp);
+        html += personRow("Foreman", c.tech.foreman, c.tech.foremanExp);
         html += `<div class="techrow"><span>Location of Equipment</span><b>${esc(c.tech.locationEquipment)||"—"}</b></div>`;
         html += `<div class="techrow"><span>Bid Winner</span><b>${esc(c.tech.bidWinner)||"—"}</b></div>`;
         html += `<div class="techrow-corr"><span>Corrections</span><div style="white-space:pre-wrap;">${esc(c.tech.corrections)||"—"}</div></div>`;
@@ -461,6 +483,10 @@ window.viewContract = function(cid){
   html += `</div><div class="cv-section"><h3>Technical</h3>`;
   if(tech){
     html += `<div class="cv-row"><span>Post Qualification Date</span><b>${esc(tech.postQualDate)||"—"}</b></div>`;
+    html += `<div class="cv-row"><span>Project Manager</span><b>${esc(tech.projectManager)||"—"}${tech.projectManagerExp?` (${esc(tech.projectManagerExp)})`:""}</b></div>`;
+    html += `<div class="cv-row"><span>Project Engineer</span><b>${esc(tech.projectEngineer)||"—"}${tech.projectEngineerExp?` (${esc(tech.projectEngineerExp)})`:""}</b></div>`;
+    html += `<div class="cv-row"><span>Materials Engineer</span><b>${esc(tech.materialsEngineer)||"—"}${tech.materialsEngineerExp?` (${esc(tech.materialsEngineerExp)})`:""}</b></div>`;
+    html += `<div class="cv-row"><span>Foreman</span><b>${esc(tech.foreman)||"—"}${tech.foremanExp?` (${esc(tech.foremanExp)})`:""}</b></div>`;
     html += `<div class="cv-row"><span>Location of Equipment</span><b>${esc(tech.locationEquipment)||"—"}</b></div>`;
     html += `<div class="cv-row"><span>Bid Winner</span><b>${esc(tech.bidWinner)||"—"}</b></div>`;
     html += `<div class="cv-section"><h3>Corrections</h3><div style="white-space:pre-wrap;">${esc(tech.corrections)||"—"}</div></div>`;
@@ -473,14 +499,14 @@ window.viewContract = function(cid){
 /* ---------- CSV export ---------- */
 function exportCsv(){
   const contracts = getContracts();
-  const headers = ["Contract ID","Contract Name","Point Person","Bid Opening Date","Financial Status","Bidder","ABC Price","Bidder's Price","Post Qualification Date","Location of Equipment","Bid Winner","Corrections"];
+  const headers = ["Contract ID","Contract Name","Point Person","Bid Opening Date","Financial Status","Bidder","ABC Price","Bidder's Price","Post Qualification Date","Project Manager","Project Manager Experience","Project Engineer","Project Engineer Experience","Materials Engineer","Materials Engineer Experience","Foreman","Foreman Experience","Location of Equipment","Bid Winner","Corrections"];
   const lines = [headers.join(",")];
   const q = v => `"${(v||"").toString().replace(/"/g,'""')}"`;
   contracts.forEach(c=>{
     const t = c.tech || {};
     const rowsToWrite = c.bids.length ? c.bids : [{}];
     rowsToWrite.forEach(b=>{
-      lines.push([c.cid,c.contractName,c.pointPerson,b.bidOpeningDate,b.financialStatus,b.bidder,b.abcPrice,b.biddersPrice,t.postQualDate,t.locationEquipment,t.bidWinner,t.corrections].map(q).join(","));
+      lines.push([c.cid,c.contractName,c.pointPerson,b.bidOpeningDate,b.financialStatus,b.bidder,b.abcPrice,b.biddersPrice,t.postQualDate,t.projectManager,t.projectManagerExp,t.projectEngineer,t.projectEngineerExp,t.materialsEngineer,t.materialsEngineerExp,t.foreman,t.foremanExp,t.locationEquipment,t.bidWinner,t.corrections].map(q).join(","));
     });
   });
   const csv = lines.join("\n");
