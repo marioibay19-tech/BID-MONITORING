@@ -228,7 +228,7 @@ async function initStorage(){
     }
   }catch(e){ console.error(e); }
   document.getElementById("statusLine").textContent = "Live — shared with everyone who opens this page";
-  fireDb.collection("financial").onSnapshot(snap=>{ state.financial = snap.docs.map(d=>({id:d.id, ...d.data()})); renderAll(); }, e=>console.error(e));
+  fireDb.collection("financial").onSnapshot(snap=>{ state.financial = snap.docs.map(d=>({id:d.id, ...d.data()})); renderAll(); maintainAutoWinners(); }, e=>console.error(e));
   fireDb.collection("technical").onSnapshot(snap=>{ state.technical = snap.docs.map(d=>({id:d.id, ...d.data()})); renderAll(); }, e=>console.error(e));
 }
 
@@ -241,6 +241,26 @@ async function saveRow(coll, data, id){
 async function deleteRow(coll, id){
   try{ await fireDb.collection(coll).doc(id).delete(); }
   catch(e){ showBanner("Couldn't delete — check your connection."); }
+}
+
+/* ---------- auto-assign winner when only one bidder ---------- */
+async function maintainAutoWinners(){
+  const byContract = {};
+  state.financial.forEach(r=>{ if(r.contractId){ (byContract[r.contractId]=byContract[r.contractId]||[]).push(r); } });
+  for(const cid in byContract){
+    const bids = byContract[cid];
+    if(bids.length!==1 || !bids[0].bidder) continue;
+    const bidder = bids[0].bidder;
+    const tech = state.technical.find(r=>r.contractId===cid);
+    if(tech){
+      if(tech.bidWinner!==bidder){
+        const {id, ...rest} = tech;
+        await saveRow("technical", {...rest, bidWinner:bidder}, id);
+      }
+    } else {
+      await saveRow("technical", {contractId:cid, contractName:bids[0].contractName||"", pointPerson:bids[0].pointPerson||"", postQualDate:"", projectManager:"", projectManagerExp:"", projectEngineer:"", projectEngineerExp:"", materialsEngineer:"", materialsEngineerExp:"", foreman:"", foremanExp:"", locationEquipment:"", bidWinner:bidder, corrections:""}, null);
+    }
+  }
 }
 
 /* ---------- datalists ---------- */
