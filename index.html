@@ -233,22 +233,48 @@ async function initStorage(){
     }
   }catch(e){ console.error(e); }
   document.getElementById("statusLine").textContent = "Live — shared with everyone who opens this page";
-  fireDb.collection("financial").onSnapshot(snap=>{ state.financial = snap.docs.map(d=>({id:d.id, ...d.data()})); renderAll(); maintainAutoWinners(); }, e=>console.error(e));
-  fireDb.collection("technical").onSnapshot(snap=>{ state.technical = snap.docs.map(d=>({id:d.id, ...d.data()})); renderAll(); }, e=>console.error(e));
+  fireDb.collection("financial").onSnapshot(snap=>{ state.financial = snap.docs.map(d=>({id:d.id, ...d.data()})); loadedFin = true; renderAll(); reconcile(); }, e=>console.error(e));
+  fireDb.collection("technical").onSnapshot(snap=>{ state.technical = snap.docs.map(d=>({id:d.id, ...d.data()})); loadedTech = true; renderAll(); reconcile(); }, e=>console.error(e));
 }
 
 async function saveRow(coll, data, id){
   try{
     if(id){ await fireDb.collection(coll).doc(id).set(data); }
     else { await fireDb.collection(coll).add(data); }
-  }catch(e){ showBanner("Couldn't save — check your connection."); }
+    return true;
+  }catch(e){ showBanner("Couldn't save — check your connection."); return false; }
 }
 async function deleteRow(coll, id){
-  try{ await fireDb.collection(coll).doc(id).delete(); }
-  catch(e){ showBanner("Couldn't delete — check your connection."); }
+  try{ await fireDb.collection(coll).doc(id).delete(); return true; }
+  catch(e){ showBanner("Couldn't delete — check your connection."); return false; }
 }
 
-/* ---------- auto-assign winner when only one bidder ---------- */
+/* ---------- technical record upkeep (auto-winner + duplicate merge) ---------- */
+let loadedFin = false, loadedTech = false, reconciling = false, reconcileAgain = false;
+function techDocId(cid){ return "tech_" + String(cid).replace(/[\/\s]+/g, "_"); }
+const isFilled = v => v !== "" && v !== null && v !== undefined;
+
+// If a contract has several technical records, merge them into the fullest one
+// (filling its blanks from the others) and only then remove the extras.
+async function mergeDuplicateTechnical(){
+  const groups = {};
+  state.technical.forEach(r=>{ if(r.contractId){ (groups[r.contractId]=groups[r.contractId]||[]).push(r); } });
+  for(const cid in groups){
+    const docs = groups[cid];
+    if(docs.length < 2) continue;
+    const score = d => Object.keys(d).filter(k=>k!=="id" && isFilled(d[k])).length;
+    docs.sort((a,b)=>score(b)-score(a));
+    const {id:keepId, ...merged} = docs[0];
+    docs.slice(1).forEach(o=>{
+      Object.keys(o).forEach(k=>{ if(k!=="id" && !isFilled(merged[k]) && isFilled(o[k])) merged[k] = o[k]; });
+    });
+    const saved = await saveRow("technical", merged, keepId);
+    if(!saved) continue; // never delete anything unless the merged record was saved
+    for(const o of docs.slice(1)){ await deleteRow("technical", o.id); }
+  }
+}
+
+// A contract with exactly one bidder: that bidder is the winner.
 async function maintainAutoWinners(){
   const byContract = {};
   state.financial.forEach(r=>{ if(r.contractId){ (byContract[r.contractId]=byContract[r.contractId]||[]).push(r); } });
@@ -256,16 +282,33 @@ async function maintainAutoWinners(){
     const bids = byContract[cid];
     if(bids.length!==1 || !bids[0].bidder) continue;
     const bidder = bids[0].bidder;
-    const tech = state.technical.find(r=>r.contractId===cid);
+    const techs = state.technical.filter(r=>r.contractId===cid);
+    if(techs.length > 1) continue; // duplicates get merged first, then this runs again
+    const tech = techs[0];
     if(tech){
       if(tech.bidWinner!==bidder){
         const {id, ...rest} = tech;
         await saveRow("technical", {...rest, bidWinner:bidder}, id);
       }
     } else {
-      await saveRow("technical", {contractId:cid, contractName:bids[0].contractName||"", pointPerson:bids[0].pointPerson||"", postQualDate:"", projectManager:"", projectManagerExp:"", projectEngineer:"", projectEngineerExp:"", materialsEngineer:"", materialsEngineerExp:"", foreman:"", foremanExp:"", locationEquipment:"", bidWinner:bidder, corrections:""}, null);
+      await saveRow("technical", {contractId:cid, contractName:bids[0].contractName||"", pointPerson:bids[0].pointPerson||"", postQualDate:"", projectManager:"", projectManagerExp:"", projectEngineer:"", projectEngineerExp:"", materialsEngineer:"", materialsEngineerExp:"", foreman:"", foremanExp:"", locationEquipment:"", bidWinner:bidder, corrections:""}, techDocId(cid));
     }
   }
+}
+
+// Runs only once BOTH lists have fully loaded, so it never mistakes "not loaded yet" for "doesn't exist".
+async function reconcile(){
+  if(!(loadedFin && loadedTech)) return;
+  if(reconciling){ reconcileAgain = true; return; }
+  reconciling = true;
+  try{
+    for(let pass=0; pass<3; pass++){
+      reconcileAgain = false;
+      await mergeDuplicateTechnical();
+      await maintainAutoWinners();
+      if(!reconcileAgain) break;
+    }
+  } finally { reconciling = false; }
 }
 
 /* ---------- datalists ---------- */
@@ -330,7 +373,8 @@ function renderCards(){
       if(prices.length) awardedTotal += Math.min(...prices);
     }
   });
-  const withWinner = techRows.filter(r=>r.bidWinner).length;
+  const winnerContracts = new Set(techRows.filter(r=>r.bidWinner).map(r=>r.contractId));
+  const withWinner = winnerContracts.size;
   document.getElementById("cards").innerHTML = [
     ["Contracts", contractIds.size],
     ["Bids Logged", finRows.length],
@@ -514,7 +558,7 @@ function saveForm(){
     obj.contractId = techContext.contractId;
     obj.contractName = techContext.contractName;
     obj.pointPerson = techContext.pointPerson;
-    saveRow("technical", obj, techContext.techId);
+    saveRow("technical", obj, techContext.techId || techDocId(techContext.contractId));
   }
   closeModal();
 }
