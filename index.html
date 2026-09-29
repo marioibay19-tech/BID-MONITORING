@@ -393,6 +393,7 @@ function renderCards(){
     ["Bids Logged", finRows.length],
     ["Total ABC", "₱"+abcTotal.toLocaleString()],
     ["Lowest Bids Total", "₱"+awardedTotal.toLocaleString()],
+    ["Savings", "₱"+(abcTotal-awardedTotal).toLocaleString()],
     ["Winner Assigned", withWinner],
   ].map(c=>`<div class="card"><div class="n">${c[1]}</div><div class="l">${c[0]}</div></div>`).join("");
 }
