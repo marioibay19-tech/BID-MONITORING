@@ -85,6 +85,13 @@ button.add:hover{background:var(--blue);border-color:var(--blue);}
 .actions button:hover{color:var(--ink);text-decoration:underline;}
 .actions button.del:hover{color:var(--danger);}
 .overlay{position:fixed;inset:0;background:rgba(20,20,18,.45);display:none;align-items:flex-end;justify-content:center;z-index:10;}
+.lock-overlay{position:fixed;inset:0;background:var(--blue);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;}
+.lock-overlay.unlocked{display:none;}
+.lock-card{background:var(--card);border-radius:10px;padding:28px 26px;width:100%;max-width:340px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.3);}
+.lock-card h2{font-family:var(--sans);font-weight:800;color:var(--blue);margin:0 0 6px;font-size:19px;}
+.lock-sub{color:var(--sub);font-size:13px;margin:0 0 16px;}
+.lock-card input{width:100%;padding:10px 12px;border-radius:6px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:14px;font-family:var(--sans);margin-bottom:10px;}
+.lock-error{color:var(--danger);font-size:12px;min-height:16px;margin-bottom:8px;}
 .overlay.open{display:flex;}
 .modal{background:var(--card);width:100%;max-width:560px;border-radius:10px 10px 0 0;padding:20px;max-height:85vh;overflow-y:auto;border:1px solid var(--line);}
 @media(min-width:600px){.overlay{align-items:center;}.modal{border-radius:10px;}}
@@ -111,6 +118,15 @@ button.add:hover{background:var(--blue);border-color:var(--blue);}
 </style>
 </head>
 <body>
+<div id="lockScreen" class="lock-overlay">
+  <div class="lock-card">
+    <h2>Bidding Monitoring</h2>
+    <p class="lock-sub">Enter the password to continue.</p>
+    <input type="password" id="lockInput" placeholder="Password" autocomplete="off">
+    <div id="lockError" class="lock-error"></div>
+    <button class="add" id="lockBtn" style="width:100%;margin-left:0;">Enter</button>
+  </div>
+</div>
 <header>
   <h1>Bidding Monitoring</h1>
   <div class="sub" id="statusLine">Every contract, its bids, and its technical record in one place.</div>
@@ -628,6 +644,26 @@ document.getElementById("search").addEventListener("input", e=>{ search = e.targ
 document.getElementById("sortSel").addEventListener("change", e=>{ sortKey = e.target.value; currentPage = 1; renderContracts(); });
 document.getElementById("dirBtn").addEventListener("click", ()=>{ sortDir = sortDir==="asc"?"desc":"asc"; syncSortControls(); currentPage = 1; renderContracts(); });
 document.getElementById("exportBtn").addEventListener("click", exportCsv);
+
+/* ---------- simple password gate (client-side only — change this value) ---------- */
+const SITE_PASSWORD = "dpwh2026";
+function checkLock(){
+  if(sessionStorage.getItem("bm_unlocked")==="yes"){
+    document.getElementById("lockScreen").classList.add("unlocked");
+  }
+}
+function tryUnlock(){
+  const val = document.getElementById("lockInput").value;
+  if(val === SITE_PASSWORD){
+    sessionStorage.setItem("bm_unlocked","yes");
+    document.getElementById("lockScreen").classList.add("unlocked");
+  } else {
+    document.getElementById("lockError").textContent = "Incorrect password.";
+  }
+}
+document.getElementById("lockBtn").addEventListener("click", tryUnlock);
+document.getElementById("lockInput").addEventListener("keydown", e=>{ if(e.key==="Enter") tryUnlock(); });
+checkLock();
 
 syncSortControls();
 initStorage();
