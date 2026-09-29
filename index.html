@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Bidding Monitoring</title>
+<title>Bid Monitoring and Evaluation Report</title>
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
@@ -120,7 +120,7 @@ button.add:hover{background:var(--blue);border-color:var(--blue);}
 <body>
 <div id="lockScreen" class="lock-overlay">
   <div class="lock-card">
-    <h2>Bidding Monitoring</h2>
+    <h2>Bid Monitoring and Evaluation Report</h2>
     <p class="lock-sub">Enter the password to continue.</p>
     <input type="password" id="lockInput" placeholder="Password" autocomplete="off">
     <div id="lockError" class="lock-error"></div>
@@ -128,7 +128,7 @@ button.add:hover{background:var(--blue);border-color:var(--blue);}
   </div>
 </div>
 <header>
-  <h1>Bidding Monitoring</h1>
+  <h1>Bid Monitoring and Evaluation Report</h1>
   <div class="sub" id="statusLine">Every contract, its bids, and its technical record in one place.</div>
 </header>
 <div class="wrap">
@@ -196,8 +196,6 @@ const FIN_FIELDS = [
 ];
 const TECH_FIELDS = [
   {key:"postQualDate", label:"Post Qualification Date", type:"date"},
-  {key:"projectManager", label:"Project Manager", type:"combo", list:"dl-personnel"},
-  {key:"projectManagerExp", label:"Project Manager – Work Experience", type:"text"},
   {key:"projectEngineer", label:"Project Engineer", type:"combo", list:"dl-personnel"},
   {key:"projectEngineerExp", label:"Project Engineer – Work Experience", type:"text"},
   {key:"materialsEngineer", label:"Materials Engineer", type:"combo", list:"dl-personnel"},
@@ -307,7 +305,7 @@ async function maintainAutoWinners(){
         await saveRow("technical", {...rest, bidWinner:bidder}, id);
       }
     } else {
-      await saveRow("technical", {contractId:cid, contractName:bids[0].contractName||"", pointPerson:bids[0].pointPerson||"", postQualDate:"", projectManager:"", projectManagerExp:"", projectEngineer:"", projectEngineerExp:"", materialsEngineer:"", materialsEngineerExp:"", foreman:"", foremanExp:"", locationEquipment:"", bidWinner:bidder, corrections:""}, techDocId(cid));
+      await saveRow("technical", {contractId:cid, contractName:bids[0].contractName||"", pointPerson:bids[0].pointPerson||"", postQualDate:"", projectEngineer:"", projectEngineerExp:"", materialsEngineer:"", materialsEngineerExp:"", foreman:"", foremanExp:"", locationEquipment:"", bidWinner:bidder, corrections:""}, techDocId(cid));
     }
   }
 }
@@ -334,7 +332,6 @@ function refreshDatalists(){
     if(r.pointPerson) people.add(r.pointPerson);
     if(r.bidder) bidders.add(r.bidder);
     if(r.bidWinner) bidders.add(r.bidWinner);
-    if(r.projectManager) personnel.add(r.projectManager);
     if(r.projectEngineer) personnel.add(r.projectEngineer);
     if(r.materialsEngineer) personnel.add(r.materialsEngineer);
     if(r.foreman) personnel.add(r.foreman);
@@ -450,7 +447,6 @@ function renderContracts(){
       html += `<div class="detail-col"><div class="detail-head"><span>Technical</span><button class="viewlink" onclick="openTechnical('${esc(c.cid)}')">${c.tech?"Edit":"Add"} Technical</button></div>`;
       if(c.tech){
         html += `<div class="techrow"><span>Post Qualification Date</span><b>${esc(c.tech.postQualDate)||"—"}</b></div>`;
-        html += personRow("Project Manager", c.tech.projectManager, c.tech.projectManagerExp);
         html += personRow("Project Engineer", c.tech.projectEngineer, c.tech.projectEngineerExp);
         html += personRow("Materials Engineer", c.tech.materialsEngineer, c.tech.materialsEngineerExp);
         html += personRow("Foreman", c.tech.foreman, c.tech.foremanExp);
@@ -597,7 +593,6 @@ window.viewContract = function(cid){
   html += `</div><div class="cv-section"><h3>Technical</h3>`;
   if(tech){
     html += `<div class="cv-row"><span>Post Qualification Date</span><b>${esc(tech.postQualDate)||"—"}</b></div>`;
-    html += `<div class="cv-row"><span>Project Manager</span><b>${esc(tech.projectManager)||"—"}${tech.projectManagerExp?` (${esc(tech.projectManagerExp)})`:""}</b></div>`;
     html += `<div class="cv-row"><span>Project Engineer</span><b>${esc(tech.projectEngineer)||"—"}${tech.projectEngineerExp?` (${esc(tech.projectEngineerExp)})`:""}</b></div>`;
     html += `<div class="cv-row"><span>Materials Engineer</span><b>${esc(tech.materialsEngineer)||"—"}${tech.materialsEngineerExp?` (${esc(tech.materialsEngineerExp)})`:""}</b></div>`;
     html += `<div class="cv-row"><span>Foreman</span><b>${esc(tech.foreman)||"—"}${tech.foremanExp?` (${esc(tech.foremanExp)})`:""}</b></div>`;
@@ -613,14 +608,14 @@ window.viewContract = function(cid){
 /* ---------- CSV export ---------- */
 function exportCsv(){
   const contracts = getContracts();
-  const headers = ["Contract ID","Contract Name","Point Person","Bid Opening Date","Financial Status","Bidder","ABC Price","Bidder's Price","Post Qualification Date","Project Manager","Project Manager Experience","Project Engineer","Project Engineer Experience","Materials Engineer","Materials Engineer Experience","Foreman","Foreman Experience","Location of Equipment","Bid Winner","Corrections"];
+  const headers = ["Contract ID","Contract Name","Point Person","Bid Opening Date","Financial Status","Bidder","ABC Price","Bidder's Price","Post Qualification Date","Project Engineer","Project Engineer Experience","Materials Engineer","Materials Engineer Experience","Foreman","Foreman Experience","Location of Equipment","Bid Winner","Corrections"];
   const lines = [headers.join(",")];
   const q = v => `"${(v||"").toString().replace(/"/g,'""')}"`;
   contracts.forEach(c=>{
     const t = c.tech || {};
     const rowsToWrite = c.bids.length ? c.bids : [{}];
     rowsToWrite.forEach(b=>{
-      lines.push([c.cid,c.contractName,c.pointPerson,b.bidOpeningDate,b.financialStatus,b.bidder,b.abcPrice,b.biddersPrice,t.postQualDate,t.projectManager,t.projectManagerExp,t.projectEngineer,t.projectEngineerExp,t.materialsEngineer,t.materialsEngineerExp,t.foreman,t.foremanExp,t.locationEquipment,t.bidWinner,t.corrections].map(q).join(","));
+      lines.push([c.cid,c.contractName,c.pointPerson,b.bidOpeningDate,b.financialStatus,b.bidder,b.abcPrice,b.biddersPrice,t.postQualDate,t.projectEngineer,t.projectEngineerExp,t.materialsEngineer,t.materialsEngineerExp,t.foreman,t.foremanExp,t.locationEquipment,t.bidWinner,t.corrections].map(q).join(","));
     });
   });
   const csv = lines.join("\n");
@@ -646,7 +641,7 @@ document.getElementById("dirBtn").addEventListener("click", ()=>{ sortDir = sort
 document.getElementById("exportBtn").addEventListener("click", exportCsv);
 
 /* ---------- simple password gate (client-side only — change this value) ---------- */
-const SITE_PASSWORD = "dpwhTWG2026";
+const SITE_PASSWORD = "dpwh2026";
 function checkLock(){
   if(sessionStorage.getItem("bm_unlocked")==="yes"){
     document.getElementById("lockScreen").classList.add("unlocked");
