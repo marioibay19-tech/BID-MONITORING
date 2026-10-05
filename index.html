@@ -45,6 +45,32 @@ button.add:hover{background:var(--blue);border-color:var(--blue);}
 .scroll{overflow-x:auto;}
 .empty{padding:36px 20px;text-align:center;color:var(--sub);font-size:13px;}
 .pagination{display:flex;align-items:center;justify-content:center;gap:14px;padding:14px 16px;}
+.btn-active{background:var(--blue);color:#fff;border-color:var(--blue);}
+.cal-header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;}
+.cal-title{font-weight:700;color:var(--blue);font-family:var(--sans);font-size:14px;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(90px,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line);}
+.cal-dow{padding:8px;text-align:center;font-size:11px;font-weight:700;color:var(--sub);background:var(--head);border-right:1px solid var(--line);border-bottom:1px solid var(--line);}
+.cal-cell{min-height:90px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:4px;font-size:11px;}
+.cal-empty{background:var(--paper);}
+.cal-today{background:var(--gold-soft);}
+.cal-daynum{font-weight:700;font-size:12px;margin-bottom:3px;}
+.cal-event{background:var(--blue);color:#fff;border-radius:3px;padding:1px 5px;margin-bottom:2px;font-size:10px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cal-event.cal-pq{background:var(--gold);}
+.cal-more{font-size:10px;color:var(--sub);}
+.cal-legend{display:flex;gap:16px;padding:10px 16px;font-size:11px;color:var(--sub);}
+.cal-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle;}
+.cal-dot.cal-bid{background:var(--blue);}
+.cal-dot.cal-pq{background:var(--gold);}
+.btn.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--line);}
+.cal-title{font-weight:700;color:var(--blue);font-size:14px;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-dow{padding:6px;text-align:center;font-size:11px;color:var(--sub);font-weight:600;background:var(--head);border-bottom:1px solid var(--line);}
+.cal-day{min-height:90px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px;font-size:11px;}
+.cal-day.other-month{opacity:.35;}
+.cal-daynum{font-weight:600;margin-bottom:4px;color:var(--sub);}
+.cal-tag{display:block;background:var(--gold-soft);color:var(--gold);border-radius:3px;padding:1px 5px;margin-bottom:3px;font-size:10px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;}
+.cal-tag:hover{background:var(--gold);color:#fff;}
 .pagination .btn:disabled{opacity:.4;cursor:not-allowed;}
 .page-info{color:var(--sub);font-size:12px;}
 .contract-card{border-bottom:1px solid var(--line);}
@@ -76,6 +102,11 @@ button.add:hover{background:var(--blue);border-color:var(--blue);}
 .techrow b{font-weight:600;text-align:right;}
 .techrow-corr{padding:8px 0;font-size:12px;}
 .techrow-corr span{display:block;color:var(--sub);margin-bottom:4px;font-weight:600;}
+.bulletin-item{border-bottom:1px solid var(--line);padding:8px 0;font-size:12px;}
+.bulletin-item:last-child{border-bottom:none;}
+.bulletin-head{display:flex;justify-content:space-between;color:var(--blue);}
+.bulletin-subject{font-weight:600;margin-top:2px;}
+.bulletin-details{color:var(--sub);white-space:pre-wrap;margin-top:4px;}
 .badge{display:inline-block;padding:2px 9px;border-radius:3px;font-size:11px;font-weight:500;border:1px solid transparent;}
 .badge.Pending{background:#F1E4CB;color:#7A5A1E;border-color:#D9BF87;}
 .badge.Passed{background:#DDE7DF;color:#2F5138;border-color:#B7CCBC;}
@@ -137,6 +168,8 @@ button.add:hover{background:var(--blue);border-color:var(--blue);}
   <div class="banner" id="banner"></div>
   <div class="cards" id="cards"></div>
   <div class="toolbar">
+    <button class="btn" id="viewListBtn">List</button>
+    <button class="btn" id="viewCalBtn">Calendar</button>
     <input type="text" id="search" placeholder="Search contracts...">
     <select id="sortSel"></select>
     <button class="btn" id="dirBtn">↑ Asc</button>
@@ -205,17 +238,27 @@ const TECH_FIELDS = [
   {key:"locationEquipment", label:"Location of Equipment", type:"text"},
   {key:"bidWinner", label:"Bid Winner", type:"combo", list:"dl-bidders"},
 ];
+const BULLETIN_FIELDS = [
+  {key:"bulletinNo", label:"Bulletin No.", type:"text"},
+  {key:"date", label:"Date", type:"date"},
+  {key:"subject", label:"Subject", type:"text"},
+  {key:"details", label:"Details", type:"textarea"},
+];
 const SORTS = [["contractId","Contract ID"],["contractName","Contract Name"],["pointPerson","Point Person"],["bidder","Bidder"]];
 
-let state = {financial:[], technical:[]};
+let state = {financial:[], technical:[], bulletins:[]};
 let editingId = null;
 let formMode = "bid"; // "bid" | "technical"
 let techContext = null; // {contractId, contractName, pointPerson, techId}
+let bulletinContext = null; // {contractId}
 let search = "";
 let sortKey = "contractId";
 let sortDir = "asc";
 let expandedGroups = new Set();
 let currentPage = 1;
+let calendarView = false;
+let calMonth = new Date().getMonth();
+let calYear = new Date().getFullYear();
 const PAGE_SIZE = 20;
 const LOCAL_KEY = "bidding-monitor-data";
 
@@ -248,6 +291,7 @@ async function initStorage(){
   document.getElementById("statusLine").textContent = "Live — shared with everyone who opens this page";
   fireDb.collection("financial").onSnapshot(snap=>{ state.financial = snap.docs.map(d=>({id:d.id, ...d.data()})); loadedFin = true; renderAll(); reconcile(); }, e=>console.error(e));
   fireDb.collection("technical").onSnapshot(snap=>{ state.technical = snap.docs.map(d=>({id:d.id, ...d.data()})); loadedTech = true; renderAll(); reconcile(); }, e=>console.error(e));
+  fireDb.collection("bulletins").onSnapshot(snap=>{ state.bulletins = snap.docs.map(d=>({id:d.id, ...d.data()})); renderAll(); }, e=>console.error(e));
 }
 
 async function saveRow(coll, data, id){
@@ -351,14 +395,16 @@ function getContracts(){
     const contractName = (bids[0]&&bids[0].contractName) || (tech&&tech.contractName) || "";
     const pointPerson = (bids[0]&&bids[0].pointPerson) || (tech&&tech.pointPerson) || "";
     const bidder = (bids[0] && bids[0].bidder) || "";
-    return {cid, bids, tech, contractName, pointPerson, bidder};
+    const bulletins = state.bulletins.filter(r=>r.contractId===cid).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+    return {cid, bids, tech, contractName, pointPerson, bidder, bulletins};
   });
   if(search){
     const q = search.toLowerCase();
     list = list.filter(c=>{
       const hay = [c.cid, c.contractName, c.pointPerson,
         ...c.bids.map(b=>Object.values(b).join(" ")),
-        c.tech?Object.values(c.tech).join(" "):""].join(" ").toLowerCase();
+        c.tech?Object.values(c.tech).join(" "):"",
+        ...c.bulletins.map(b=>Object.values(b).join(" "))].join(" ").toLowerCase();
       return hay.includes(q);
     });
   }
@@ -394,6 +440,7 @@ function renderCards(){
     ["Lowest Bids Total", "₱"+awardedTotal.toLocaleString()],
     ["Savings", "₱"+(abcTotal-awardedTotal).toLocaleString()],
     ["Winner Assigned", withWinner],
+    ["Bulletins Issued", state.bulletins.length],
   ].map(c=>`<div class="card"><div class="n">${c[1]}</div><div class="l">${c[0]}</div></div>`).join("");
 }
 
@@ -408,6 +455,7 @@ function personRow(label, name, exp){
   return `<div class="techrow"><span>${label}</span><b>${val}</b></div>`;
 }
 function renderContracts(){
+  if(calendarView){ renderCalendar(); return; }
   const host = document.getElementById("tableHost");
   const contracts = getContracts();
   if(!contracts.length){
@@ -454,6 +502,16 @@ function renderContracts(){
         html += `<div class="techrow"><span>Bid Winner</span><b>${esc(c.tech.bidWinner)||"—"}</b></div>`;
         html += `<div class="techrow-corr"><span>Corrections</span><div style="white-space:pre-wrap;">${esc(c.tech.corrections)||"—"}</div></div>`;
       } else html += `<div class="empty-mini">No technical info yet.</div>`;
+      html += `</div>`;
+      html += `<div class="detail-col"><div class="detail-head"><span>Bid Bulletins</span><button class="viewlink" onclick="openAddBulletin('${esc(c.cid)}')">Add Bulletin</button></div>`;
+      if(c.bulletins.length){
+        c.bulletins.forEach(b=>{
+          html += `<div class="bulletin-item"><div class="bulletin-head"><b>${esc(b.bulletinNo)||"Bulletin"}</b><span>${esc(b.date)||""}</span></div>`;
+          if(b.subject) html += `<div class="bulletin-subject">${esc(b.subject)}</div>`;
+          if(b.details) html += `<div class="bulletin-details">${esc(b.details)}</div>`;
+          html += `<div class="actions"><button onclick="openEditBulletin('${b.id}')">Edit</button><button class="del" onclick="askDeleteBulletin('${b.id}')">Delete</button></div></div>`;
+        });
+      } else html += `<div class="empty-mini">No bulletins issued yet.</div>`;
       html += `</div></div></div>`;
     }
     html += `</div>`;
@@ -466,6 +524,47 @@ function renderContracts(){
     html += `</div>`;
   }
   host.innerHTML = html;
+}
+function todayStr(){ const t=new Date(); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`; }
+function renderCalendar(){
+  const host = document.getElementById("tableHost");
+  const contracts = getContracts();
+  const events = {};
+  contracts.forEach(c=>{
+    const bidDate = c.bids[0] && c.bids[0].bidOpeningDate;
+    if(bidDate){ (events[bidDate]=events[bidDate]||[]).push({cid:c.cid, type:"bid", label:c.contractName||c.cid}); }
+    if(c.tech && c.tech.postQualDate){ (events[c.tech.postQualDate]=events[c.tech.postQualDate]||[]).push({cid:c.cid, type:"pq", label:c.contractName||c.cid}); }
+  });
+  const first = new Date(calYear, calMonth, 1);
+  const startDow = first.getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const monthLabel = first.toLocaleDateString("en-US", {month:"long", year:"numeric"});
+  const today = todayStr();
+  let html = `<div class="cal-header"><button class="btn" onclick="calNav(-1)">‹ Prev</button><span class="cal-title">${monthLabel}</span><button class="btn" onclick="calNav(1)">Next ›</button></div>`;
+  html += `<div class="cal-grid">`;
+  ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(d=> html += `<div class="cal-dow">${d}</div>`);
+  for(let i=0;i<startDow;i++) html += `<div class="cal-cell cal-empty"></div>`;
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const dayEvents = events[dateStr] || [];
+    html += `<div class="cal-cell${dateStr===today?" cal-today":""}"><div class="cal-daynum">${d}</div>`;
+    dayEvents.slice(0,4).forEach(e=>{
+      html += `<div class="cal-event cal-${e.type}" onclick="viewContract('${esc(e.cid)}')" title="${esc(e.label)}">${e.type==="bid"?"Bid":"PQ"} · ${esc(e.cid)}</div>`;
+    });
+    if(dayEvents.length>4) html += `<div class="cal-more">+${dayEvents.length-4} more</div>`;
+    html += `</div>`;
+  }
+  const trailing = (7 - ((startDow+daysInMonth) % 7)) % 7;
+  for(let i=0;i<trailing;i++) html += `<div class="cal-cell cal-empty"></div>`;
+  html += `</div>`;
+  html += `<div class="cal-legend"><span class="cal-legend-item"><span class="cal-dot cal-bid"></span>Bid Opening</span><span class="cal-legend-item"><span class="cal-dot cal-pq"></span>Post Qualification</span></div>`;
+  host.innerHTML = html;
+}
+window.calNav = function(delta){
+  calMonth += delta;
+  if(calMonth<0){ calMonth=11; calYear--; }
+  if(calMonth>11){ calMonth=0; calYear++; }
+  renderCalendar();
 }
 window.goToPage = function(p){ currentPage = p; renderContracts(); }
 window.toggleGroup = function(cid){
@@ -507,6 +606,23 @@ window.openTechnical = function(cid){
   buildForm(TECH_FIELDS, c.tech || {});
   document.getElementById("overlay").classList.add("open");
 }
+window.openAddBulletin = function(cid){
+  formMode = "bulletin"; editingId = null;
+  const count = state.bulletins.filter(r=>r.contractId===cid).length;
+  bulletinContext = {contractId:cid};
+  document.getElementById("modalTitle").textContent = "Add Bid Bulletin — Contract " + cid;
+  buildForm(BULLETIN_FIELDS, {bulletinNo:"Bulletin No. "+(count+1), date:new Date().toISOString().slice(0,10)});
+  document.getElementById("overlay").classList.add("open");
+}
+window.openEditBulletin = function(id){
+  formMode = "bulletin"; editingId = id;
+  const row = state.bulletins.find(r=>r.id===id);
+  bulletinContext = {contractId: row.contractId};
+  document.getElementById("modalTitle").textContent = "Edit Bid Bulletin";
+  buildForm(BULLETIN_FIELDS, row);
+  document.getElementById("overlay").classList.add("open");
+}
+window.askDeleteBulletin = function(id){ if(confirm("Delete this bulletin?")) deleteRow("bulletins", id); };
 function buildForm(fieldsArr, data){
   const host = document.getElementById("formHost");
   host.innerHTML = fieldsArr.map(f=>{
@@ -566,6 +682,9 @@ function saveForm(){
   inputs.forEach(i=> obj[i.dataset.key] = i.value.trim());
   if(formMode==="bid"){
     saveRow("financial", obj, editingId);
+  } else if(formMode==="bulletin"){
+    obj.contractId = bulletinContext.contractId;
+    saveRow("bulletins", obj, editingId);
   } else {
     obj.contractId = techContext.contractId;
     obj.contractName = techContext.contractName;
@@ -600,6 +719,14 @@ window.viewContract = function(cid){
     html += `<div class="cv-row"><span>Bid Winner</span><b>${esc(tech.bidWinner)||"—"}</b></div>`;
     html += `<div class="cv-section"><h3>Corrections</h3><div style="white-space:pre-wrap;">${esc(tech.corrections)||"—"}</div></div>`;
   } else html += `<div class="cv-row"><span>No technical entry yet</span></div>`;
+  html += `</div><div class="cv-section"><h3>Bid Bulletins</h3>`;
+  const bulletins = state.bulletins.filter(r=>r.contractId===cid).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  if(bulletins.length){
+    bulletins.forEach(b=>{
+      html += `<div class="cv-row"><span>${esc(b.bulletinNo)||"Bulletin"}${b.date?` (${esc(b.date)})`:""} — ${esc(b.subject)||""}</span><b></b></div>`;
+      if(b.details) html += `<div style="font-size:12px;color:var(--sub);white-space:pre-wrap;padding:0 0 6px;">${esc(b.details)}</div>`;
+    });
+  } else html += `<div class="cv-row"><span>No bulletins issued</span></div>`;
   html += `</div>`;
   document.getElementById("printArea").innerHTML = html;
   document.getElementById("cvOverlay").classList.add("open");
@@ -628,6 +755,17 @@ function exportCsv(){
 }
 
 /* ---------- wiring ---------- */
+function setView(cal){
+  calendarView = cal;
+  document.getElementById("viewListBtn").classList.toggle("btn-active", !cal);
+  document.getElementById("viewCalBtn").classList.toggle("btn-active", cal);
+  document.getElementById("sortSel").style.display = cal ? "none" : "";
+  document.getElementById("dirBtn").style.display = cal ? "none" : "";
+  renderContracts();
+}
+document.getElementById("viewListBtn").addEventListener("click", ()=>setView(false));
+document.getElementById("viewCalBtn").addEventListener("click", ()=>setView(true));
+setView(false);
 document.getElementById("addBtn").addEventListener("click", ()=>openAddBid());
 document.getElementById("cancelBtn").addEventListener("click", closeModal);
 document.getElementById("saveBtn").addEventListener("click", saveForm);
@@ -641,7 +779,7 @@ document.getElementById("dirBtn").addEventListener("click", ()=>{ sortDir = sort
 document.getElementById("exportBtn").addEventListener("click", exportCsv);
 
 /* ---------- simple password gate (client-side only — change this value) ---------- */
-const SITE_PASSWORD = "dpwhTWG2026";
+const SITE_PASSWORD = "dpwh2026";
 function checkLock(){
   if(sessionStorage.getItem("bm_unlocked")==="yes"){
     document.getElementById("lockScreen").classList.add("unlocked");
